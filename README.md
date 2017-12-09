@@ -3,14 +3,16 @@
 This library allows the user to program and read the outputs of the BME680 Sensor with an Arduino Board.
 
 DISCLAIMER: This library is still under development and therefore UNFINISHED.
-            With this library you are able to read temperature, pressure and humidity from the BME680.
-            The calculation of the IAQ (Indoor Air Quality) index is still not available.       
+            With this library you are able to read temperature, pressure, humidity and the resistance of the 
+            gas sensor sensitive layer from the BME680.
+            Currently the library only allows for the I2C communication.
+             
 
 
 ## **Repository Contents**
 
 * Source Files (.cpp and .h)
-* Example Sketch: BME280_Test.ino
+* Example Sketch: BME680_EnvironmentalSensor.ino
 * library.properties File
 
 

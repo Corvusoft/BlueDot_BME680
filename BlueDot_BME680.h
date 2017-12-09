@@ -130,7 +130,7 @@ struct DeviceParameter
 	uint8_t humidOversampling;
 	uint16_t pressureSeaLevel;
 	int16_t tempOutsideCelsius = 999;
-	int16_t tempOutsideFahrenheit = 999;	
+	int16_t tempOutsideFahrenheit = 999;
 	int16_t target_temp;
 	int16_t amb_temp;
 	uint8_t hotplate_profile;

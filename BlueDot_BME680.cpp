@@ -1,5 +1,5 @@
-//The BlueDot BME680 library is being conceived to read the BME680 sensor with an Arduino
-//This library is an on going development and this version is UNFINISHED
+//The BlueDot BME680 library is being conceived to read the BME680 sensor with an Arduino Uno
+//This library is an on going development and this version is UNFINISHED (Status 2017)
 
 //So far I've managed to read temperature, pressure and humidity from the BME680 sensor with similar results as from a BME280 sensor
 //The BME680 seems to show a noticeable self-heating effect, basically heating the board where it is mounted
@@ -8,12 +8,10 @@
 //In practice, I suppose measuring once every couple seconds should help to minimize the self-heating effect
 //At the BSEC Integration Guide (BST-BME680-AN008-34) Bosch goes further and advises to compensate both temperature and humidity readings caused by the integrated hot plate (page 37)
 
-//With this library I've managed to read the resistance (in ohms) of the gas sensitive layer
-//But I'm not sure if the hot plate was set properly, so I don't know how accurate this measurement is
-//Also, I still don't know how to calculate the IAQ value from the measured gas resistance
+//Furthermore With this library you can read the resistance (in ohms) of the gas sensitive layer
 
 //Finally, this library only uses the I2C bus
-//So far I didn't try to communicate with the sensor through the SPI interface
+//The implementation of the SPI communication is still unfinished
 
 //Until this library is working properly, I hope this unfinished version can help anyone to understand how this sensor works
 
@@ -50,15 +48,31 @@ BlueDot_BME680::BlueDot_BME680()
 
 }
 //##########################################################################
+//INITIALIZATION
+//##########################################################################
 //So far the initialization of the BME680 consists on initializing the I2C bus, setting the IIR filter, reading the calibration coefficients and checking the Chip ID
+//This is enough to read temperature, humidity and pressure values
+//In order to read the gas sensor, we also need to set the hot plate time (e.g. 100 ms), set the hot plate target temperature (e.g. 320 °C) and select the hot plate profile
+
 
 uint8_t BlueDot_BME680::init(void)
 {
 	
 	Wire.begin();
-	writeIIRFilter();
-	readCoefficients();
-	return checkID();
+	writeByte(BME680_CTRL_GAS_1, 0);
+	writeIIRFilter();							//set IIR Filter coefficient
+	readCoefficients();							//read coefficients from calibration registers
+	
+	//The following three functions enable gas sensor
+	//If you wish to turn the gas sensor off (and reduce the sensor's self-heating), just comment out the following functions
+	
+	calculateHotPlateTime();					//set heat up duration to 100 ms			
+	calculateHotPlateRes();						//convert target_temp to heater resistance (set on Arduino Sketch)
+	setHotPlateProfile();						//select heater profile to be used and set run_gas_I to 1 to enable gas measurement
+	
+	//Now finish the initialization by reading the chip ID
+	
+	return checkID();							//read chip ID
 
 }
 //##########################################################################
@@ -119,6 +133,7 @@ void BlueDot_BME680::readCoefficients(void)
 //The other bits from this register won't be used in this program and remain 0
 //Please refer to the BME680 Datasheet for more information (page 28)
 
+
 void BlueDot_BME680::writeIIRFilter(void)
 {	
 	byte value;
@@ -133,6 +148,7 @@ void BlueDot_BME680::writeIIRFilter(void)
 //Please note that setting the sensor mode to "01" (Forced Mode) starts a measurement
 //After a single measurement the sensor will return to sensor mode "00" (Sleep Mode)
 //Therefore we must set the sensor mode to Forced Mode on the Loop function 
+
 
 void BlueDot_BME680::writeCTRLMeas(void)
 {
@@ -151,6 +167,7 @@ void BlueDot_BME680::writeCTRLMeas(void)
 //Reading the temperature value from the BME680 is identical to reading the temperature from the BME280
 //If the oversampling factor is set to 0, the temperature measurement is disabled
 //This function returns the temperature in Celsius
+
 
 float BlueDot_BME680::readTempC(void)
 {	
@@ -180,6 +197,7 @@ float BlueDot_BME680::readTempC(void)
 
 //##########################################################################
 //This function also reads the temperature from BME680 and converts the resulting value from Celsius to Fahrenheit
+
 
 float BlueDot_BME680::readTempF(void)
 {	
@@ -214,6 +232,7 @@ float BlueDot_BME680::readTempF(void)
 //If the user chooses to read temperature in Fahrenheit instead, "tempOutsideCelsius" remains 999
 //If both values are used, then the temperature in Celsius will be used for the conversion
 //If none of them are used, then the default value of 288.15 will be used (i.e. 273.15 + 15)
+
 
 float BlueDot_BME680::convertTempKelvin(void)
 {
@@ -322,6 +341,7 @@ float BlueDot_BME680::readPressure(void)
 //Reading the humidity values from the BME680 is DIFFERENT from reading the humidity value from the BME280 sensor
 //The following functions were taken from the file "bme680_calculations.c" from Bosch Sensortec (Revision 2.2.0 $ from 5 May 2017)
 
+
 float BlueDot_BME680::readHumidity(void)
 {
 	if (parameter.humidOversampling == 0b000)					//disabling the humitidy measurement function
@@ -378,6 +398,7 @@ float BlueDot_BME680::readHumidity(void)
 //On the website the formula sets the outside temperature at 15°C and the pressure at sea level at 1013.25hPa as constant values
 //For more precise measurements, change this constants to actual values from your location
 
+
 float BlueDot_BME680::readAltitudeMeter(void)
 {
 	float heightOutput = 0;
@@ -394,6 +415,7 @@ float BlueDot_BME680::readAltitudeMeter(void)
 //##########################################################################
 //This is the same formula from before, but it converts the altitude from meters to feet before returning the results
 
+
 float BlueDot_BME680::readAltitudeFeet(void)
 {	
 	float heightOutput = 0;
@@ -408,28 +430,20 @@ float BlueDot_BME680::readAltitudeFeet(void)
 	heightOutput = heightOutput / 0.3048;
 	return heightOutput;	
 }
-//##########################################################################
-float BlueDot_BME680::readGas(void)
-{
-	int16_t gas_r;	
-	gas_r = (uint16_t)readByte(BME680_GAS_MSB) << 2;
-	gas_r |= (uint16_t)((uint16_t)readByte(BME680_GAS_LSB) >> 6);	
-	
-	int8_t gas_range;
-	gas_range = (uint8_t)readByte(BME680_GAS_LSB) & 0b00001111;
-	
-	double var1;
-	float gas_res;
-	
-	var1 = (1340.0 + 5.0 * bme680_coefficients.range_switching_error) * const_array1[gas_range];
-	gas_res = var1 * const_array2[gas_range] / (gas_r - 512.0 + var1);
-	
-	return gas_res;
-	
-	
-}
+
 
 //##########################################################################
+//DATA READOUT FUNCTIONS - GAS SENSOR
+//##########################################################################
+//Reading the gas sensor involves four steps
+//This is the first step
+//First we write the target temperature for the hot plate on the Arduino Sketch
+//This is defined as parameter.target_temp
+//This function uses the target_temp value to calculate the resistance of the hot plate
+//The BME680 will use this resistance to heat up the gas sensor hot plate
+//According to the datasheet the sensor needs a target temperature between 200°C and 400°C to work properly
+
+
 void BlueDot_BME680::calculateHotPlateRes(void)
 {
 	double var1;
@@ -452,13 +466,25 @@ void BlueDot_BME680::calculateHotPlateRes(void)
 	
 }
 //##########################################################################
+//This is the second step
+//Here we define how long the hot plate should keep the target temperature
+//Here I chose a fixed duration of 100 ms for all measurements
+//If you wish to change the duration, please refer to the datasheet (page 30, chapter 5.3.3.3)
+
+
 void BlueDot_BME680::calculateHotPlateTime(void)
 {
-	int8_t heat_time_0 = 0b01011001;					//100 ms heating duration
+	int8_t heat_time_0 = 0b01100101;					//100 ms heating duration
 	writeByte(BME680_GAS_WAIT_0, heat_time_0);	
 	
 }
 //##########################################################################
+//This is the third step
+//Now we are sending the heating duration and the target resistance (calculated from the target temperature) to the sensor
+//This is done by writing to the register BME680_CTRL_GAS_1 (register 071h)
+//Finally by writing the bit 4 of this register to logic 1 we enable the gas sensor measurement
+
+
 void BlueDot_BME680::setHotPlateProfile(void)
 {
 	byte value;
@@ -466,20 +492,30 @@ void BlueDot_BME680::setHotPlateProfile(void)
 	writeByte(BME680_CTRL_GAS_1, value);
 	
 }
+
 //##########################################################################
-uint16_t BlueDot_BME680::checkMeasurementStatus(void)
+float BlueDot_BME680::readGas(void)
+//This is the last and final step
+//Here we read the resistance of the gas sensor
+//This is done on the loop function
+
 {
-	uint8_t gas_valid_r;
-
-	gas_valid_r = ((uint8_t)readByte(0x2B) >> 4) & 0b00000001;	
+	int16_t gas_r;	
+	gas_r = (uint16_t)readByte(BME680_GAS_MSB) << 2;
+	gas_r |= (uint16_t)((uint16_t)readByte(BME680_GAS_LSB) >> 6);	
 	
-	if (gas_valid_r)
-	{
-		return gas_valid_r;
-	}
+	int8_t gas_range;
+	gas_range = (uint8_t)readByte(BME680_GAS_LSB) & 0b00001111;
 	
-
+	double var1;
+	float gas_res;
+	
+	var1 = (1340.0 + 5.0 * bme680_coefficients.range_switching_error) * const_array1[gas_range];
+	gas_res = var1 * const_array2[gas_range] / (gas_r - 512.0 + var1);
+	
+	return gas_res;	
 }
+
 //##########################################################################
 //BASIC FUNCTIONS
 //##########################################################################

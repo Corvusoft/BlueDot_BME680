@@ -19,6 +19,7 @@ DISCLAIMER: This library is still under development and therefore UNFINISHED.
 ## **Version History**
 
 * V1.0.0 - Public Release Version
+* V1.1.0
 
 
 ## **License Information**

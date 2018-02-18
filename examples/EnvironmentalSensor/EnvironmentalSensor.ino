@@ -10,7 +10,7 @@
 
   DISCLAIMER: 
   This Sketch is based on an UNFINISHED library!
-  With the current version (09 December 2017) of the BlueDot BME680 library you can read temperature, pressure, humidity and gas sensor resistance.
+  With the current version (18 February 20118) of the BlueDot BME680 library you can read temperature, pressure, humidity and gas sensor resistance.
   However only through the I2C interface.
   For more details, please refer to the comments on the ".cpp" and ".h" files.
 

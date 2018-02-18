@@ -20,6 +20,7 @@ DISCLAIMER: This library is still under development and therefore UNFINISHED.
 
 * V1.0.0 - Public Release Version
 * V1.1.0
+* V1.2.0
 
 
 ## **License Information**

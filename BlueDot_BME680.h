@@ -162,6 +162,7 @@ class BlueDot_BME680
   float readAltitudeMeter(void);
   float readAltitudeFeet(void);
   float readGas(void);
+  bool readStatus(void);
   void calculateHotPlateRes(void);
   void calculateHotPlateTime(void);
   void setHotPlateProfile(void);

@@ -209,17 +209,23 @@ void loop()
 
   bme680.writeCTRLMeas();
 
-  Serial.print(millis()/1000);
-  Serial.print(F("\t"));
-  Serial.print(bme680.readTempC());
-  Serial.print(F("\t"));
-  Serial.print(bme680.readHumidity());
-  Serial.print(F("\t"));
-  Serial.print(bme680.readPressure());
-  Serial.print(F("\t"));
-  Serial.print(bme680.readAltitudeMeter());
-  Serial.print(F("\t"));
-  Serial.print(bme680.readGas());
+  Serial.print(F("Duration in Seconds:\t\t"));
+  Serial.println(millis()/1000);  
+
+  Serial.print(F("Temperature in Celsius:\t\t")); 
+  Serial.println(bme680.readTempC());
+
+  Serial.print(F("Humidity in %:\t\t\t")); 
+  Serial.println(bme680.readHumidity());
+
+  Serial.print(F("Pressure in hPa:\t\t")); 
+  Serial.println(bme680.readPressure());
+
+  Serial.print(F("Altitude in Meters:\t\t"));
+  Serial.println(bme680.readAltitudeMeter());
+
+  Serial.print(F("Gas Resistance in Ohms:\t\t"));
+  Serial.println(bme680.readGas());
   Serial.println();
 
   

@@ -159,7 +159,7 @@ void BlueDot_BME680::writeCTRLMeas(void)
 	value = (parameter.tempOversampling << 5) & 0b11100000;
 	value |= (parameter.pressOversampling << 2) & 0b00011100;
 	value |= parameter.sensorMode & 0b00000011;
-	writeByte(BME680_CTRL_MEAS, value);	
+	writeByte(BME680_CTRL_MEAS, value);		
 }
 //##########################################################################
 //DATA READOUT FUNCTIONS
@@ -468,13 +468,13 @@ void BlueDot_BME680::calculateHotPlateRes(void)
 //##########################################################################
 //This is the second step
 //Here we define how long the hot plate should keep the target temperature
-//Here I chose a fixed duration of 100 ms for all measurements
+//Here I chose a fixed duration of 148 ms for all measurements
 //If you wish to change the duration, please refer to the datasheet (page 30, chapter 5.3.3.3)
 
 
 void BlueDot_BME680::calculateHotPlateTime(void)
 {
-	int8_t heat_time_0 = 0b01100101;					//100 ms heating duration
+	int8_t heat_time_0 = 0b01100101;					//148 ms heating duration
 	writeByte(BME680_GAS_WAIT_0, heat_time_0);	
 	
 }
@@ -491,6 +491,36 @@ void BlueDot_BME680::setHotPlateProfile(void)
 	value = (((byte)parameter.hotplate_profile) & 0b00001111) | 0b00010000;
 	writeByte(BME680_CTRL_GAS_1, value);
 	
+	
+}
+//##########################################################################
+bool BlueDot_BME680::readStatus(void)
+{
+	uint8_t newDataBit = ((readByte(0x1D) & 0b10000000) >> 7);      
+	
+  if (newDataBit == 1) 
+  {                                                  
+    uint8_t gasValidBit = ((readByte(0x2B) & 0b00100000) >> 5);
+    uint8_t heaterStabilityBit = ((readByte(0x2B) & 0b00010000) >> 4);
+
+    if ((gasValidBit == 1) & (heaterStabilityBit == 1))
+    {
+		
+		return 1;
+    }
+
+    else
+    {
+      return 0;
+    }
+    
+  }
+
+  else
+  {
+    return 0;
+  }
+
 }
 
 //##########################################################################
@@ -500,20 +530,32 @@ float BlueDot_BME680::readGas(void)
 //This is done on the loop function
 
 {
-	int16_t gas_r;	
-	gas_r = (uint16_t)readByte(BME680_GAS_MSB) << 2;
-	gas_r |= (uint16_t)((uint16_t)readByte(BME680_GAS_LSB) >> 6);	
 	
-	int8_t gas_range;
-	gas_range = (uint8_t)readByte(BME680_GAS_LSB) & 0b00001111;
+	for (int8_t i = 0; i = 10; i++)
+	{
+		if (readStatus() == 1)
+		{
+			int16_t gas_r;	
+			gas_r = (uint16_t)readByte(BME680_GAS_MSB) << 2;
+			gas_r |= (uint16_t)((uint16_t)readByte(BME680_GAS_LSB) >> 6);	
 	
-	double var1;
-	float gas_res;
+			int8_t gas_range;
+			gas_range = (uint8_t)readByte(BME680_GAS_LSB) & 0b00001111;
 	
-	var1 = (1340.0 + 5.0 * bme680_coefficients.range_switching_error) * const_array1[gas_range];
-	gas_res = var1 * const_array2[gas_range] / (gas_r - 512.0 + var1);
+			double var1;
+			float gas_res;
 	
-	return gas_res;	
+			var1 = (1340.0 + 5.0 * bme680_coefficients.range_switching_error) * const_array1[gas_range];
+			gas_res = var1 * const_array2[gas_range] / (gas_r - 512.0 + var1);	
+
+			return gas_res;
+		}
+		
+		delay(20);
+	}
+	
+	return 0;	
+	
 }
 
 //##########################################################################
